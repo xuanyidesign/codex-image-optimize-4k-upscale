@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.venv/
+venv/
+*_4k.png
+*_4k.jpg
+*_4k.jpeg

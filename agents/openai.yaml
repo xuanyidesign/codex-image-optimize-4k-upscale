@@ -1,0 +1,4 @@
+interface:
+  display_name: "工具_图像优化_4k高清放大"
+  short_description: "按原比例去噪重绘材质，并无裁切、无扩边地输出真实4K图像"
+  default_prompt: "使用 $tool-image-optimize-4k-upscale 去除输入图像的噪点脏污、重绘真实材质，并按原始长宽比例输出4K。"
