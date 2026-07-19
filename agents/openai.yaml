@@ -1,4 +1,4 @@
 interface:
   display_name: "工具_图像优化_4k高清放大"
-  short_description: "四块重叠调用内置图像修复，并无缝拼合为原比例真实4K图像"
-  default_prompt: "使用 $tool-image-optimize-4k-upscale 将输入图像分成四个重叠切片，分别调用内置image_gen高清修复，再无缝拼合为原比例4K PNG。"
+  short_description: "先生成最高原生整图母版，再原生切四块融合为4K"
+  default_prompt: "使用 $tool-image-optimize-4k-upscale 先按结构解析与真实材质重建要求调用内置image_gen生成最高原生整图母版，直接从原生母版拆成四个重叠切片逐块增强，再经几何配准和高频残差融合输出原比例4K PNG。"
