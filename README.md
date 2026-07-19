@@ -1,29 +1,37 @@
 # Codex Image Optimize — True 4K Upscale
 
-一个面向 Codex 的图像优化 Skill。它将原图映射到保持原始长宽比的 4K 坐标系，切成四块带重叠区域的图像，分别调用内置 `image_gen` 高清修复，再通过参考色彩回校和余弦羽化拼合为无明显接缝的 PNG。
+一个面向 Codex 的图像优化 Skill。它先用内置 `image_gen` 生成全局一致的最高原生分辨率整图母版，再直接从母版切出四块重叠图像分别增强，最后通过几何配准与可信高频残差融合生成无明显接缝的原比例 4K PNG。
 
-当前版本：`1.1.0`
+当前版本：`1.2.0`
+
+> [!WARNING]
+> `v1.1.0` 存在已知缺陷：整块余弦羽化会造成细节变软，且缺少几何配准，可能产生模糊、重影或错误拼合。请停止使用并升级到 `v1.2.0`。
 
 ## 核心能力
 
 - 最终长边精确为 3840 像素，短边按原图比例计算
 - 不裁切、不补边、不扩展画布，不强制转换成 16:9
+- 先按结构解析与分区真实材质策略生成最高原生整图母版，不归一化为固定 2K
 - 默认切分为 2×2 四块，横纵重叠区域为整图对应尺寸的 12%
 - 四块分别调用 Codex 内置 `image_gen`，无需 `OPENAI_API_KEY`
 - 清理噪点、脏污、压缩块、锯齿、涂抹感与条带
 - 锁定主体、构图、轮廓、比例、徽标、文字、颜色、光影和透视
-- 以完整 4K 基底校正各块低频色彩和亮度
-- 使用互补余弦权重融合重叠区域，并输出机器可读的验证结果
+- 使用 ECC 仿射配准与受限稠密光流对齐各块
+- 保留整图母版的低频几何、颜色与光影，只注入有原图证据的高频残差
+- 互补余弦权重仅融合已配准的高频残差，不直接羽化整块图像
+- 输出机器可读的配准、融合、接缝与尺寸验证结果
 
 ## 工作原理
 
 ```text
 读取原图真实尺寸
-  → 创建原比例 4K 坐标基底
-  → 切分四个重叠图块
+  → 结构解析与分区真实材质策略
+  → 一次 image_gen 生成最高原生整图母版
+  → 直接从原生母版切分四个重叠图块
   → 四次内置 image_gen 独立修复
-  → 对齐基底色彩与亮度
-  → 互补余弦羽化拼合
+  → 映射到原比例 4K 坐标
+  → ECC 仿射与稠密光流几何配准
+  → 可信高频残差融合
   → 尺寸、比例和接缝验证
 ```
 
@@ -54,14 +62,15 @@ python3 -m pip install -r \
 
 ```text
 使用 $tool-image-optimize-4k-upscale 优化这张图片。
-保持原始长宽比例与完整构图，分成四块调用内置 image_gen 高清修复，
-去除噪点和脏污并无缝拼合为 4K PNG。
+保持原始长宽比例与完整构图，先生成最高原生整图母版，再分成四块调用
+内置 image_gen 高清修复，经几何配准与高频残差融合输出 4K PNG。
 ```
 
-准备 4K 基底和四个重叠切片：
+先把内置 `image_gen` 返回的最高原生整图母版保存为 `master_native.png`，再准备 4K 配准基底和四个重叠切片：
 
 ```bash
 python3 scripts/prepare_4k_tiles.py "/absolute/path/input.png" \
+  --master "/absolute/path/output/imagegen/job-name/master_native.png" \
   --output-dir "/absolute/path/output/imagegen/job-name"
 ```
 
@@ -85,8 +94,11 @@ python3 scripts/stitch_4k_tiles.py \
 
 - `output_long_edge == 3840`
 - `tile_count == 4`
-- `color_matched == true`
-- `blend_mode == "complementary-cosine"`
+- `fixed_2k_normalization == false`
+- `registration_mode == "ecc-affine+dense-optical-flow"`
+- `fusion_mode == "registered-high-frequency-residual"`
+- `whole_tile_blended == false`
+- `base_low_frequency_preserved == true`
 - `cropped == false`
 - `padded == false`
 - `canvas_extended == false`
@@ -105,6 +117,7 @@ python3 scripts/stitch_4k_tiles.py \
 .
 ├── SKILL.md
 ├── agents/openai.yaml
+├── references/master_prompt.md
 ├── references/tile_prompt.md
 ├── scripts/prepare_4k_tiles.py
 ├── scripts/stitch_4k_tiles.py
